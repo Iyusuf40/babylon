@@ -20,6 +20,24 @@
             height: 100%;
             touch-action: none;
         }
+
+        #controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 10;
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+        }
+
+        #controls input,
+        #controls select,
+        #controls button {
+            margin: 5px;
+            padding: 5px;
+        }
     </style>
 
     <script src="https://cdn.babylonjs.com/babylon.js"></script>
@@ -28,58 +46,77 @@
 </head>
 
 <body>
+    <div id="controls">
+        <label for="rows">Rows:</label>
+        <input type="number" id="rows" min="1" max="100" value="50" />
+
+        <label for="columns">Columns:</label>
+        <input type="number" id="columns" min="1" max="100" value="50" />
+
+        <label for="shape">Shape:</label>
+        <select id="shape">
+            <option value="box">Box</option>
+            <option value="sphere">Sphere</option>
+        </select>
+
+        <button id="renderBtn">Render</button>
+    </div>
+
     <canvas id="renderCanvas" touch-action="none"></canvas>
-    <!-- touch-action="none" for best results from PEP -->
 
     <script>
-        const canvas = document.getElementById("renderCanvas"); // Get the canvas element
-        const engine = new BABYLON.Engine(canvas, true); // Generate the BABYLON 3D engine
+        const canvas = document.getElementById("renderCanvas");
+        const engine = new BABYLON.Engine(canvas, true);
 
-        const createScene = () => {
+        const createScene = (numRows, numCols, shape) => {
             const scene = new BABYLON.Scene(engine);
-
-            /**** Set camera and light *****/
             const camera = new BABYLON.ArcRotateCamera("camera", -Math.PI / 2, Math.PI / 2.5, 10, new BABYLON.Vector3(0, 0, 0));
             camera.attachControl(canvas, true);
+
             const light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(1, 1, 0));
 
-            const numberOfBlocksPerRow = 50
-            const numberOfBlocksPerCol = 50
-            const size = 0.2
-            const sizePlusSpace = size + (size * 0.5)
-            let shape = "box"
+            const size = 0.2;
+            const sizePlusSpace = size + (size * 0.5);
 
-            for (let row = 0; row < numberOfBlocksPerRow; row++) {
-                for (let col = 0; col < numberOfBlocksPerCol; col++) {
-                    let x = (- Math.floor(numberOfBlocksPerRow / 2) + row) * sizePlusSpace
-                    let y = (- Math.floor(numberOfBlocksPerCol / 2) + col) * sizePlusSpace
+            // Clear previous meshes
+            scene.meshes.forEach(mesh => mesh.dispose());
+
+            for (let row = 0; row < numRows; row++) {
+                for (let col = 0; col < numCols; col++) {
+                    let x = (-Math.floor(numRows / 2) + row) * sizePlusSpace;
+                    let y = (-Math.floor(numCols / 2) + col) * sizePlusSpace;
+
                     if (shape === "box") {
-                        const box = BABYLON.MeshBuilder.CreateBox("box", {
-                            size,
-                        });
-                        box.position.y = y
-                        box.position.x = x
+                        const box = BABYLON.MeshBuilder.CreateBox("box", { size }, scene);
+                        box.position.x = x;
+                        box.position.y = y;
                     } else {
-                        const sphere = BABYLON.MeshBuilder.CreateSphere("sphere", {
-                            diameter: size,
-                        });
-                        sphere.position.y = y
-                        sphere.position.x = x
+                        const sphere = BABYLON.MeshBuilder.CreateSphere("sphere", { diameter: size }, scene);
+                        sphere.position.x = x;
+                        sphere.position.y = y;
                     }
                 }
             }
 
             return scene;
-        }
+        };
 
-        const scene = createScene(); //Call the createScene function
+        const renderButton = document.getElementById("renderBtn");
 
-        // Register a render loop to repeatedly render the scene
-        engine.runRenderLoop(function () {
-            scene.render();
+        renderButton.addEventListener("click", () => {
+            const numRows = parseInt(document.getElementById("rows").value, 10);
+            const numCols = parseInt(document.getElementById("columns").value, 10);
+            const shape = document.getElementById("shape").value;
+
+            const scene = createScene(numRows, numCols, shape);
+
+            engine.stopRenderLoop()
+            engine.runRenderLoop(() => {
+                scene.render();
+            });
         });
 
-        // Watch for browser/canvas resize events
+        // Handle window resize
         window.addEventListener("resize", function () {
             engine.resize();
         });
