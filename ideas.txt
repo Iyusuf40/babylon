@@ -1,0 +1,29 @@
+
+https://github.com/BabylonJS/Babylon.js/blob/085ddcd5d21ee24c01e1f942ee5ebd43429e9f7b/packages/dev/core/src/scene.ts#L153
+- collisions is enabled in Scene
+- check this flag dispatchAllSubMeshesOfActiveMeshes
+- check if particles is enabled
+- play with scene._isDisposed for intervals to simulate lower fps
+
+
+-- Implement custom fps by wrapping Scene.render in a function that
+   fires after intervals
+   - calculate the time it takes to render
+   - if it is less that 16ms do nothing
+   - else set it to that as the time to execute as that is the maximum
+     ability of that system
+
+Frames Queuer
+https://github.com/BabylonJS/Babylon.js/blob/3725abaed67d26b5a8de053f3aa336deae4373b1/packages/dev/core/src/Engines/abstractEngine.ts#L75
+- bypass requestAnimationFrame and set lesser fps at setTimeOut
+
+
+renderFrame
+https://github.com/BabylonJS/Babylon.js/blob/3725abaed67d26b5a8de053f3aa336deae4373b1/packages/dev/core/src/Engines/abstractEngine.ts#L924
+
+renderLoop
+https://github.com/BabylonJS/Babylon.js/blob/3725abaed67d26b5a8de053f3aa336deae4373b1/packages/dev/core/src/Engines/abstractEngine.ts#L890
+
+- check if can limit frame rate
+- check if can limit number of objects to render
+- user spheres vs cuboids
