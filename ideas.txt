@@ -1,3 +1,25 @@
+Onload
+- get all models
+- compute their bounding box and sort by x
+- also sort by z a second list
+- freeze all
+- before each render unfreeze visible
+
+
+Explore webworkers
+
+Buffer input
+ - catch keys and mouse events and propagate in a measured manner
+
+
+Scene optimizer
+- https://doc.babylonjs.com/features/featuresDeepDive/scene/sceneOptimizer
+
+Do not draw shapes that are occluded
+- https://doc.babylonjs.com/features/featuresDeepDive/occlusionQueries
+- Nope, might need to Implement this ourselves
+ 
+
 
 https://github.com/BabylonJS/Babylon.js/blob/085ddcd5d21ee24c01e1f942ee5ebd43429e9f7b/packages/dev/core/src/scene.ts#L153
 - collisions is enabled in Scene
@@ -27,3 +49,4 @@ https://github.com/BabylonJS/Babylon.js/blob/3725abaed67d26b5a8de053f3aa336deae4
 - check if can limit frame rate
 - check if can limit number of objects to render
 - user spheres vs cuboids
+- remove textures
