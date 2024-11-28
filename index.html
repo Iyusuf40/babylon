@@ -120,6 +120,23 @@
         window.addEventListener("resize", function () {
             engine.resize();
         });
+
+
+        function AdaptiveFPSLoop(render) {
+            let renderStart = Date.now()
+            let result = render()
+            let renderEnd = Date.now()
+            let renderInterval = renderEnd - renderStart + 5 // + 5ms to allow cpu do other task
+            renderInterval = Math.max(renderInterval, 16)
+            setTimeout(
+                () => {
+                    AdaptiveFPSLoop(render)
+                },
+                renderInterval
+            )
+            return result
+        }
+
     </script>
 </body>
 

@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Babylon Template</title>
+
+    <style>
+        html,
+        body {
+            overflow: hidden;
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        #renderCanvas {
+            width: 100%;
+            height: 100%;
+            touch-action: none;
+        }
+
+        #controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 10;
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+        }
+
+        #controls input,
+        #controls select,
+        #controls button {
+            margin: 5px;
+            padding: 5px;
+        }
+    </style>
+
+    <script src="https://cdn.babylonjs.com/babylon.js"></script>
+    <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
+    <script src="https://code.jquery.com/pep/0.4.3/pep.js"></script>
+</head>
+
+<body>
+    <div id="controls">
+        <button id="renderBtn">Render</button>
+    </div>
+
+    <canvas id="renderCanvas" touch-action="none"></canvas>
+
+    <script>
+        const canvas = document.getElementById("renderCanvas");
+        const engine = new BABYLON.Engine(canvas, true);
+
+        const renderButton = document.getElementById("renderBtn");
+
+        renderButton.addEventListener("click", () => {
+            engine.stopRenderLoop()
+
+            const scene = createScene()
+            BABYLON.SceneLoader.ImportMeshAsync("", "http://localhost:8000/", "model1.glb").then((result) => {
+
+            });
+
+            useBuiltInOptimizer(scene)
+
+            engine.runRenderLoop(() => {
+                scene.render();
+            });
+        });
+
+        function createScene() {
+            const scene = new BABYLON.Scene(engine);
+            const camera = new BABYLON.ArcRotateCamera("camera", -Math.PI / 2, Math.PI / 2.5, 10, new BABYLON.Vector3(0, 0, 0));
+            // const camera = new BABYLON.FreeCamera("freeCamera", new BABYLON.Vector3(0, 5, -10), scene);
+
+            camera.attachControl(canvas, true);
+
+            const light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(1, 1, 0));
+            return scene
+        }
+
+        function useBuiltInOptimizer(scene) {
+            const optimizer = BABYLON.SceneOptimizer.OptimizeAsync(scene);
+            optimizer.start();
+            // var options = new BABYLON.SceneOptimizerOptions(30, 500);
+            // options.addOptimization(new BABYLON.HardwareScalingOptimization(0, 1));
+
+            // // Optimizer
+            // var optimizer = new BABYLON.SceneOptimizer(scene, options);
+            // optimizer.start()
+        }
+
+        // Handle window resize
+        window.addEventListener("resize", function () {
+            engine.resize();
+        });
+
+    </script>
+</body>
+
+</html>
