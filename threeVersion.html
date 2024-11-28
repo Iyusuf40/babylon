@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Three.js Optimized Scene</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+</head>
+
+<body>
+    <!-- Render Button -->
+    <button id="renderButton" style="position: absolute; top: 10px; left: 10px; z-index: 10;">Render Scene</button>
+
+    <script>
+        // Set up scene, camera, and renderer
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio); // Optimize for high DPI screens
+        renderer.outputEncoding = THREE.sRGBEncoding; // Better color accuracy
+        document.body.appendChild(renderer.domElement);
+
+        // OrbitControls for smooth user interaction
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.minDistance = 1;
+        controls.maxDistance = 50;
+        controls.maxPolarAngle = Math.PI / 2; // Prevent over-rotation
+
+        // Lighting setup
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.4); // Soft ambient light
+        scene.add(ambientLight);
+
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(5, 10, 7.5);
+        directionalLight.castShadow = true;
+        directionalLight.shadow.mapSize.width = 2048; // Shadow map resolution
+        directionalLight.shadow.mapSize.height = 2048;
+        scene.add(directionalLight);
+
+        // Flag to track if rendering has started
+        let isRenderingStarted = false;
+
+        // Load GLB model with optimizations
+        const loader = new THREE.GLTFLoader();
+        loader.load('http://localhost:8000/model1.glb', function (gltf) {
+            gltf.scene.traverse(function (node) {
+                if (node.isMesh) {
+                    node.frustumCulled = true; // Only render visible meshes
+                    node.castShadow = true;
+                    node.receiveShadow = true;
+
+                    // Apply geometry and material optimizations
+                    node.geometry.computeBoundingSphere(); // Helps frustum culling
+                    node.geometry.computeBoundingBox();
+                    node.material.metalness = 0; // Reduce costly PBR effects if not needed
+                    node.material.roughness = 1; // Full roughness for better performance
+                }
+            });
+
+            scene.add(gltf.scene);
+        });
+
+        // Position the camera
+        camera.position.set(0, 2, 10);
+        controls.update();
+
+        // Render animation loop (only starts when the button is clicked)
+        function animate() {
+            if (isRenderingStarted) {
+                requestAnimationFrame(animate);
+                controls.update();
+                renderer.render(scene, camera);
+            }
+        }
+
+        // Handle window resizing
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Event listener for the "Render" button
+        document.getElementById('renderButton').addEventListener('click', () => {
+            if (!isRenderingStarted) {
+                // Start the rendering process
+                isRenderingStarted = true;
+                animate();
+                document.getElementById('renderButton').style.display = 'none'; // Hide button after click
+            }
+        });
+    </script>
+</body>
+
+</html>
