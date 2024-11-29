@@ -5,6 +5,42 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Three.js Optimized Scene</title>
+
+    <style>
+        html,
+        body {
+            overflow: hidden;
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        #renderCanvas {
+            width: 100%;
+            height: 100%;
+            touch-action: none;
+        }
+
+        #controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 10;
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+        }
+
+        #controls input,
+        #controls select,
+        #controls button {
+            margin: 5px;
+            padding: 5px;
+        }
+    </style>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
@@ -12,7 +48,9 @@
 
 <body>
     <!-- Render Button -->
-    <button id="renderButton" style="position: absolute; top: 10px; left: 10px; z-index: 10;">Render Scene</button>
+    <div id="controls">
+        <button id="renderButton">Render</button>
+    </div>
 
     <script>
         // Set up scene, camera, and renderer
@@ -46,26 +84,6 @@
         // Flag to track if rendering has started
         let isRenderingStarted = false;
 
-        // Load GLB model with optimizations
-        const loader = new THREE.GLTFLoader();
-        loader.load('http://localhost:8000/model1.glb', function (gltf) {
-            gltf.scene.traverse(function (node) {
-                if (node.isMesh) {
-                    node.frustumCulled = true; // Only render visible meshes
-                    node.castShadow = true;
-                    node.receiveShadow = true;
-
-                    // Apply geometry and material optimizations
-                    node.geometry.computeBoundingSphere(); // Helps frustum culling
-                    node.geometry.computeBoundingBox();
-                    node.material.metalness = 0; // Reduce costly PBR effects if not needed
-                    node.material.roughness = 1; // Full roughness for better performance
-                }
-            });
-
-            scene.add(gltf.scene);
-        });
-
         // Position the camera
         camera.position.set(0, 2, 10);
         controls.update();
@@ -89,6 +107,25 @@
         // Event listener for the "Render" button
         document.getElementById('renderButton').addEventListener('click', () => {
             if (!isRenderingStarted) {
+                // Load GLB model with optimizations
+                const loader = new THREE.GLTFLoader();
+                loader.load('http://localhost:8000/model1.glb', function (gltf) {
+                    gltf.scene.traverse(function (node) {
+                        if (node.isMesh) {
+                            node.frustumCulled = true; // Only render visible meshes
+                            node.castShadow = true;
+                            node.receiveShadow = true;
+
+                            // Apply geometry and material optimizations
+                            node.geometry.computeBoundingSphere(); // Helps frustum culling
+                            node.geometry.computeBoundingBox();
+                            node.material.metalness = 0; // Reduce costly PBR effects if not needed
+                            node.material.roughness = 1; // Full roughness for better performance
+                        }
+                    });
+
+                    scene.add(gltf.scene);
+                });
                 // Start the rendering process
                 isRenderingStarted = true;
                 animate();
