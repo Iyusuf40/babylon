@@ -65,7 +65,7 @@
             BABYLON.SceneLoader.ImportMeshAsync("", "http://localhost:8000/", "model1.glb").then((result) => {
                 scene.meshes.forEach(mesh => {
                     applyOpRecursivelyOnSubmeshes(mesh, () => {
-                        mesh.occlusionType = BABYLON.AbstractMesh.OCCLUSION_TYPE_STRICT
+                        // applyOcclusionAlgo(mesh)
                         mesh.freezeWorldMatrix()
                     })
                 });
@@ -82,7 +82,7 @@
             const scene = new BABYLON.Scene(engine);
             // const camera = new BABYLON.ArcRotateCamera("camera", -Math.PI / 2, Math.PI / 2.5, 10, new BABYLON.Vector3(0, 0, 0));
             // const camera = new BABYLON.UniversalCamera("universalCamera", new BABYLON.Vector3(0, 5, -10), scene);
-            const camera = new BABYLON.FreeCamera("freeCamera", new BABYLON.Vector3(0, 5, -10), scene);
+            const camera = new BABYLON.FreeCamera("freeCamera", new BABYLON.Vector3(0, 5, -5), scene);
 
 
             camera.attachControl(canvas, true);
@@ -112,8 +112,21 @@
         }
 
         function applyOpRecursivelyOnSubmeshes(mesh, op) {
+            if (mesh.__visited__) return
+            // I don't know if meshes could contain parent meshes as submeshes
+            // so this is a hack to prevent cyclical recursion
+            // now this implies applyOpRecursivelyOnSubmeshes can only be called
+            // only once in one place
+            mesh.__visited__ = true
             op(mesh)
             mesh.subMeshes?.forEach(m => applyOpRecursivelyOnSubmeshes(m, op))
+        }
+
+        function applyOcclusionAlgo(mesh) {
+            // does not work well
+            mesh.occlusionRetryCount = 5
+            mesh.occlusionQueryAlgorithmType = BABYLON.AbstractMesh.OCCLUSION_ALGORITHM_TYPE_ACCURATE
+            mesh.occlusionType = BABYLON.AbstractMesh.OCCLUSION_TYPE_STRICT
         }
 
         // Handle window resize

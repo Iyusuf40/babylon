@@ -18,6 +18,13 @@ Scene optimizer
 Do not draw shapes that are occluded
 - https://doc.babylonjs.com/features/featuresDeepDive/occlusionQueries
 - Nope, might need to Implement this ourselves
+- Yes, BabylonJS impl is shit
+- Approach
+  - get all meshes
+  - build a tree of all meshes
+  - nesting all meshes inside their parents
+  - if camera is outside a parent meshes
+  - hide all nested meshes
  
 
 
