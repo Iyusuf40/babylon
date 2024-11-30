@@ -56,6 +56,11 @@
         const canvas = document.getElementById("renderCanvas");
         const engine = new BABYLON.Engine(canvas, true);
 
+        // look here for additional info
+        // https://doc.babylonjs.com/setup/support/webGPU/webGPUOptimization/webGPUSnapshotRendering/
+        engine.snapshotRendering = true;
+        engine.snapshotRenderingMode = BABYLON.Constants.SNAPSHOTRENDERING_STANDARD;
+
         const renderButton = document.getElementById("renderBtn");
 
         renderButton.addEventListener("click", () => {
@@ -65,9 +70,7 @@
             BABYLON.SceneLoader.ImportMeshAsync("", "http://localhost:8000/", "model1.glb").then((result) => {
                 scene.meshes.forEach(mesh => {
                     applyOpRecursivelyOnSubmeshes(mesh, () => {
-                        // applyOcclusionAlgo(mesh)
-                        mesh.freezeWorldMatrix()
-                        mesh.cullingStrategy = BABYLON.AbstractMesh.CULLINGSTRATEGY_BOUNDINGSPHERE_ONLY
+                        applyMeshOptimizations(mesh)
                     })
                 });
             });
@@ -79,7 +82,18 @@
             scene.performancePriority = BABYLON.ScenePerformancePriority.Aggressive
             scene.autoClear = true
 
-            useBuiltInOptimizer(scene)
+            optimizeScene(scene)
+
+            // Handle click events
+            scene.onPointerObservable.add((pointerInfo) => {
+                if (pointerInfo.type === BABYLON.PointerEventTypes.POINTERPICK) {
+                    const pickResult = pointerInfo.pickInfo;
+                    const isCtrlOrCmdPressed = pointerInfo.event.ctrlKey || pointerInfo.event.metaKey;
+                    if (pickResult.hit && isCtrlOrCmdPressed) {
+                        createTagAtPosition(pickResult.pickedPoint, scene);
+                    }
+                }
+            });
 
             engine.runRenderLoop(() => {
                 scene.render();
@@ -103,7 +117,7 @@
             scene.activeCamera = camera;
 
             // Set camera parameters for an FPS feel
-            camera.speed = 0.4; // Adjust movement speed
+            camera.speed = 0.6; // Adjust movement speed
             // camera.angularSensibility = 1000; // Mouse sensitivity (lower value = higher sensitivity)
 
             // Optional: Limit vertical rotation to avoid unnatural head movement
@@ -114,9 +128,16 @@
             return scene
         }
 
-        function useBuiltInOptimizer(scene) {
+        function optimizeScene(scene) {
             const optimizer = BABYLON.SceneOptimizer.OptimizeAsync(scene);
             optimizer.start();
+        }
+
+        function applyMeshOptimizations(mesh) {
+            // applyOcclusionAlgo(mesh)
+            mesh.freezeWorldMatrix()
+            mesh.cullingStrategy = BABYLON.AbstractMesh.CULLINGSTRATEGY_BOUNDINGSPHERE_ONLY
+            mesh.isPickable = true // because .performancePriority == BABYLON.ScenePerformancePriority.Aggressive
         }
 
         function applyOpRecursivelyOnSubmeshes(mesh, op) {
@@ -128,6 +149,15 @@
             mesh.__visited__ = true
             op(mesh)
             mesh.subMeshes?.forEach(m => applyOpRecursivelyOnSubmeshes(m, op))
+        }
+
+        function createTagAtPosition(position, scene) {
+            const box = BABYLON.MeshBuilder.CreateBox("box", { size: 1 }, scene);
+            box.position = position.clone();  // Clone to avoid modifying the original vector
+            box.position.y += 0.5;            // Adjust Y to place the box on top of the ground
+            applyOpRecursivelyOnSubmeshes(box, () => {
+                applyMeshOptimizations(box)
+            })
         }
 
         function applyOcclusionAlgo(mesh) {

@@ -110,6 +110,15 @@
 
             const scene = createScene(numRows, numCols, shape);
 
+            scene.onPointerObservable.add((pointerInfo) => {
+                if (pointerInfo.type === BABYLON.PointerEventTypes.POINTERPICK) {
+                    const pickResult = pointerInfo.pickInfo;
+                    if (pickResult.hit) {
+                        createBoxAtPosition(pickResult.pickedPoint, scene);
+                    }
+                }
+            });
+
             engine.stopRenderLoop()
             engine.runRenderLoop(() => {
                 scene.render();
@@ -120,6 +129,12 @@
         window.addEventListener("resize", function () {
             engine.resize();
         });
+
+        function createBoxAtPosition(position, scene) {
+            const box = BABYLON.MeshBuilder.CreateBox("box", { size: 1 }, scene);
+            box.position = position.clone();  // Clone to avoid modifying the original vector
+            box.position.y += 0.5;  // Adjust Y to place the box on top of the ground
+        }
 
 
         function AdaptiveFPSLoop(render) {
