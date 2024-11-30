@@ -56,6 +56,13 @@
         const canvas = document.getElementById("renderCanvas");
         const engine = new BABYLON.Engine(canvas, true);
 
+        setupDB()
+            .then(db => {
+            })
+            .catch(error => {
+                console.error("Database setup failed", error);
+            });
+
         // look here for additional info
         // https://doc.babylonjs.com/setup/support/webGPU/webGPUOptimization/webGPUSnapshotRendering/
         engine.snapshotRendering = true;
@@ -67,15 +74,8 @@
             engine.stopRenderLoop()
 
             const scene = createScene()
-            BABYLON.SceneLoader.ImportMeshAsync("", "http://localhost:8000/", "model1.glb").then((result) => {
-                scene.meshes.forEach(mesh => {
-                    applyOpRecursivelyOnSubmeshes(mesh, () => {
-                        applyMeshOptimizations(mesh)
-                    })
-                });
-            });
 
-            scene.freezeActiveMeshes() // will this affect tagging? add it to active meshes right?
+            loadSceneFromGlb("http://localhost:8000/model1.glb", scene)
 
             // this improved perf significantly with some caveats
             // look here https://doc.babylonjs.com/features/featuresDeepDive/scene/optimize_your_scene#aggressive-mode
@@ -135,7 +135,7 @@
 
         function applyMeshOptimizations(mesh) {
             // applyOcclusionAlgo(mesh)
-            mesh.freezeWorldMatrix()
+            mesh.isReady() && mesh.freezeWorldMatrix()
             mesh.cullingStrategy = BABYLON.AbstractMesh.CULLINGSTRATEGY_BOUNDINGSPHERE_ONLY
             mesh.isPickable = true // because .performancePriority == BABYLON.ScenePerformancePriority.Aggressive
         }
@@ -171,6 +171,174 @@
         window.addEventListener("resize", function () {
             engine.resize();
         });
+
+        function loadSceneFromGlb(url, scene) {
+            checkUrlInIndexedDb(url)
+                .then(result => {
+                    if (result.isInDb) {
+                        const glFile = new File([result.blob], 'model.glb', {
+                            type: 'model/gltf-binary'
+                        });
+
+                        importGLFileInScene(glFile, scene)
+                    } else {
+                        fetch(url)
+                            .then((response) => response.blob())
+                            .then((blob) => {
+
+                                const glFile = new File([blob], 'model.glb', {
+                                    type: 'model/gltf-binary'
+                                });
+
+                                storeBlobInDb(url, blob)
+
+                                importGLFileInScene(glFile, scene)
+                            });
+                    }
+                })
+        }
+
+        function importGLFileInScene(glFile, scene) {
+            BABYLON.SceneLoader.ImportMeshAsync("", "", glFile).then((result) => {
+                result.meshes.forEach(mesh => {
+                    applyOpRecursivelyOnSubmeshes(mesh, () => {
+                        applyMeshOptimizations(mesh)
+                    })
+                });
+                scene.freezeActiveMeshes() // will this affect tagging? add it to active meshes right?
+            });
+        }
+
+        function getBlobFromDb(url) {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open("models", 1);
+
+                request.onsuccess = function (event) {
+                    const db = event.target.result;
+                    const transaction = db.transaction(["glb"], "readwrite");
+                    const store = transaction.objectStore("glb");
+
+                    const objectStoreRequest = store.get(url);
+                    objectStoreRequest.onsuccess = (e) => {
+                        resolve(objectStoreRequest.result.blob);
+                    };
+
+                    objectStoreRequest.onerror = (e) => {
+                        reject({ error: "failed to retrieve data for " + url });
+                    };
+                };
+
+                request.onerror = (event) => {
+                    reject({ error: "Failed to open database", event: event });
+                };
+            });
+        }
+
+        function storeBlobInDb(url, blob) {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open("models", 1);
+
+                request.onsuccess = function (event) {
+                    const db = event.target.result;
+                    const transaction = db.transaction(["glb"], "readwrite");
+                    const store = transaction.objectStore("glb");
+
+                    const objectStoreRequest = store.put({ url, blob });
+                    objectStoreRequest.onsuccess = () => {
+                        resolve({ success: "data stored for " + url });
+                    };
+
+                    objectStoreRequest.onerror = () => {
+                        reject({ error: "failed to store data for " + url });
+                    };
+                };
+
+                request.onerror = (event) => {
+                    reject({ error: "Failed to open database", event: event });
+                };
+            });
+        }
+
+        function deleteFromDb(url) {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open("models", 1);
+
+                request.onsuccess = function (event) {
+                    const db = event.target.result;
+                    const transaction = db.transaction(["glb"], "readwrite");
+                    const store = transaction.objectStore("glb");
+
+                    const objectStoreRequest = store.delete(url);
+                    objectStoreRequest.onsuccess = () => {
+                        resolve({ success: "data deleted for " + url });
+                    };
+
+                    objectStoreRequest.onerror = () => {
+                        reject({ error: "failed to delete data for " + url });
+                    };
+                };
+
+                request.onerror = (event) => {
+                    reject({ error: "Failed to open database", event: event });
+                };
+            });
+        }
+
+        function checkUrlInIndexedDb(url) {
+            return getBlobFromDb(url)
+                .then(blob => {
+                    return { isInDb: true, blob }
+                })
+                .catch(() => {
+                    return { isInDb: false }
+                })
+        }
+
+        function indexDb() {
+
+            // Store the blob
+            function storeBlob(blob) {
+                const request = indexedDB.open("models", 1);
+
+                request.onsuccess = function (event) {
+                    const db = event.target.result;
+                    const transaction = db.transaction("glb", "readwrite");
+                    const store = transaction.objectStore("glb");
+
+                    // Put the blob data into the store with a unique id
+                    const id = Date.now(); // or generate any unique ID
+                    store.put({ id, blob });
+                };
+            }
+
+            // Example: storing a 1GB blob
+            const blob = new Blob([new Uint8Array(1e9)], { type: "application/octet-stream" });
+            storeBlob(blob);
+
+        }
+
+        function setupDB() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open("models", 1);
+
+                // Handle database setup
+                request.onupgradeneeded = function (event) {
+                    const db = event.target.result;
+                    if (!db.objectStoreNames.contains("glb")) {
+                        db.createObjectStore("glb", { keyPath: "url" });
+                    }
+                };
+
+                request.onsuccess = function (event) {
+                    const db = event.target.result;
+                    resolve(db);
+                };
+
+                request.onerror = function (event) {
+                    reject(event);
+                };
+            });
+        }
 
     </script>
 </body>
